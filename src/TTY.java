@@ -976,13 +976,13 @@ public class TTY implements EventNotifier {
             } else if (token.equals("-tserver")) {
                 // -server must be the first one
                 javaArgs = "-server " + javaArgs;
-            } else if (token.equals("-sourcepath")) {
+            } else if (token.equals("-sourcepath") || token.equals("-sp")) {
                 if (i == (argv.length - 1)) {
                     usageError("No sourcepath specified.");
                     return;
                 }
                 Env.setSourcePath(argv[++i]);
-            } else if (token.equals("-classpath")) {
+            } else if (token.equals("-classpath") || token.equals("-cp")) {
                 if (i == (argv.length - 1)) {
                     usageError("No classpath specified.");
                     return;
@@ -1128,7 +1128,6 @@ public class TTY implements EventNotifier {
             }
             connectSpec += "main=" + cmdLine + ",";
         }
-
         if (javaArgs.length() > 0) {
             if (!connectSpec.startsWith("com.sun.jdi.CommandLineLaunch:")) {
                 usageError("Cannot specify target vm arguments with connector:",

@@ -45,9 +45,9 @@ class SourceMapper {
 
     private final String[] dirs;
 
-    SourceMapper(List<String> sourcepath) {
-        /*
-         * sourcepath can arrive from the debuggee as a List.
+      SourceMapper(List<String> sourcepath) {
+          /*
+           * sourcepath can arrive from the debuggee as a List.
          * (via PathSearchingVirtualMachine.classPath())
          */
         List<String> dirList = new ArrayList<String>();

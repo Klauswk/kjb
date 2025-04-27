@@ -463,7 +463,7 @@ public class TTYResources extends java.util.ListResourceBundle {
              "\n" +
              "where options include:\n" +
              "    -? -h --help -help print this help message and exit\n" +
-             "    -sourcepath <directories separated by \"{1}\">\n" +
+             "    -sourcepath -sp <directories separated by \"{1}\">\n" +
              "                      directories in which to look for source files\n" +
              "    -attach <address>\n" +
              "                      attach to a running VM at the specified address using standard connector\n" +
@@ -486,7 +486,7 @@ public class TTYResources extends java.util.ListResourceBundle {
              "    -v -verbose[:class|gc|jni]\n" +
              "                      turn on verbose mode\n" +
              "    -D<name>=<value>  set a system property\n" +
-             "    -classpath <directories separated by \"{1}\">\n" +
+             "    -classpath -cp <directories separated by \"{1}\">\n" +
              "                      list directories in which to look for classes\n" +
              "    -X<option>        non-standard target VM option\n" +
              "\n" +
