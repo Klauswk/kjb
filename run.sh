@@ -1,1 +1,2 @@
-java -cp target/ com.github.klauswk.tty.TTY -launch test/SimpleClass.java
+java -cp "target/:libs/*" com.github.klauswk.tty.TTY -launch test/SimpleClass.java
+

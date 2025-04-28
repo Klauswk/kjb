@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.io.*;
 
+import org.jline.reader.*;
+
 public class TTY implements EventNotifier {
     /**
      * Commands that are repeatable on empty input.
@@ -40,6 +42,8 @@ public class TTY implements EventNotifier {
     private static boolean trackVthreads;
 
     private volatile boolean shuttingDown;
+
+    private static String linePrefix = ">";
 
     /**
      * The number of the next source line to target for {@code list}, if any.
@@ -101,7 +105,6 @@ public class TTY implements EventNotifier {
             case EventRequest.SUSPEND_EVENT_THREAD:
             case EventRequest.SUSPEND_NONE:
                 printBreakpointLocation(be);
-                MessageOutput.printPrompt();
                 break;
         }
     }
@@ -218,7 +221,6 @@ public class TTY implements EventNotifier {
             t.nextToken();  // get rid of monitor number
             executeCommand(t);
         }
-        MessageOutput.printPrompt();
     }
 
     @Override
@@ -471,7 +473,6 @@ public class TTY implements EventNotifier {
 
                             String startCommand = "in " + mainClass +  ".main";
                             evaluator.commandStop(new StringTokenizer(startCommand));
-                            MessageOutput.printPrompt(true);
                             showPrompt = false;
                             evaluator.commandNext();
                         } else if (cmd.equals("classes")) {
@@ -493,7 +494,6 @@ public class TTY implements EventNotifier {
                         } else if (cmd.equals("resume")) {
                             evaluator.commandResume(t);
                         } else if (cmd.equals("cont")) {
-                            MessageOutput.printPrompt(true);
                             showPrompt = false;
                             evaluator.commandCont();
                         } else if (cmd.equals("threadgroups")) {
@@ -505,15 +505,12 @@ public class TTY implements EventNotifier {
                         } else if (cmd.equals("ignore")) {
                             evaluator.commandIgnoreException(t);
                         } else if (cmd.equals("step")) {
-                            MessageOutput.printPrompt(true);
                             showPrompt = false;
                             evaluator.commandStep(t);
                         } else if (cmd.equals("stepi")) {
-                            MessageOutput.printPrompt(true);
                             showPrompt = false;
                             evaluator.commandStepi();
                         } else if (cmd.equals("next")) {
-                            MessageOutput.printPrompt(true);
                             showPrompt = false;
                             evaluator.commandNext();
                         } else if (cmd.equals("kill")) {
@@ -627,9 +624,6 @@ public class TTY implements EventNotifier {
                     }
                 }
             }
-        }
-        if (showPrompt) {
-            MessageOutput.printPrompt();
         }
 
         if (LIST_RESET.contains(cmd)) {
@@ -812,14 +806,12 @@ public class TTY implements EventNotifier {
                     readStartupCommandFile(userDir, ".jdbrc", canonPath);
                 }
             }
-
-            // Process interactive commands.
-            MessageOutput.printPrompt();
-
             String lastLine = null;
             String lastCommandName = null;
+            LineReader lineReader = LineReaderBuilder.builder().build();
             while (true) {
-                String ln = in.readLine();
+                String ln = lineReader.readLine(linePrefix);
+
                 if (ln == null) {
                     /*
                      *  Jdb is being shutdown because debuggee exited, ignore any 'null'
@@ -830,7 +822,7 @@ public class TTY implements EventNotifier {
                     }
                     ln = "quit";
                 }
-                
+
                 if ("".equals(ln) && lastLine != null) ln = "!!";
 
                 if ("q".equals(ln)) ln = "quit";
@@ -848,8 +840,6 @@ public class TTY implements EventNotifier {
                     // We want list auto-advance even if the user started with a listing target.
                     String newCommand = lastCommandName.equals("list") && nextListTarget != null ? "list" : lastLine;
                     executeCommand(new StringTokenizer(newCommand));
-                } else {
-                    MessageOutput.printPrompt();
                 }
             }
         } catch (VMDisconnectedException e) {
