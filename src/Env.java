@@ -56,9 +56,11 @@ class Env {
 
     private static HashMap<String, Value> savedValues = new HashMap<String, Value>();
     private static Method atExitMethod;
+    private static String mainClass;
 
-    static void init(String connectSpec, boolean openNow, int flags, boolean trackVthreads, String extraOptions) {
+    static void init(String connectSpec, boolean openNow, int flags, boolean trackVthreads, String extraOptions, String mainClass) {
         connection = new VMConnection(connectSpec, flags, trackVthreads, extraOptions);
+        Env.mainClass = mainClass;
         if (!connection.isLaunch() || openNow) {
             connection.open();
         }
@@ -256,6 +258,10 @@ class Env {
 
     static void setSavedValue(String key, Value value) {
         savedValues.put(key, value);
+    }
+
+    static String getMainClass() {
+      return Env.mainClass;
     }
 
     static class SourceCode {

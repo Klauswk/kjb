@@ -321,7 +321,6 @@ public class TTY implements EventNotifier {
         {"methods",      "n",         "y"},
         {"monitor",      "n",         "n"},
         {"next",         "n",         "n"},
-        {"start",        "n",         "y"},
         {"pop",          "n",         "n"},
         {"print",        "n",         "y"},
         {"quit",         "y",         "y"},
@@ -334,6 +333,7 @@ public class TTY implements EventNotifier {
         {"save",         "n",         "n"},
         {"set",          "n",         "n"},
         {"sourcepath",   "y",         "y"},
+        {"start",        "n",         "y"},
         {"step",         "n",         "n"},
         {"stepi",        "n",         "n"},
         {"stop",         "y",         "n"},
@@ -463,7 +463,17 @@ public class TTY implements EventNotifier {
                         } else if (cmd.equals("locals")) {
                             evaluator.commandLocals();
                         } else if (cmd.equals("start")) {
-                          
+                            String mainClass = Env.getMainClass();
+
+                            if (Env.getMainClass().endsWith(".java")) {
+                               mainClass = mainClass.substring(mainClass.lastIndexOf('/') + 1, mainClass.lastIndexOf('.'));
+                            }
+
+                            String startCommand = "in " + mainClass +  ".main";
+                            evaluator.commandStop(new StringTokenizer(startCommand));
+                            MessageOutput.printPrompt(true);
+                            showPrompt = false;
+                            evaluator.commandNext();
                         } else if (cmd.equals("classes")) {
                             evaluator.commandClasses();
                         } else if (cmd.equals("class")) {
@@ -1141,7 +1151,7 @@ public class TTY implements EventNotifier {
         }
 
         try {
-            Env.init(connectSpec, launchImmediately, traceFlags, trackVthreads, javaArgs);
+            Env.init(connectSpec, launchImmediately, traceFlags, trackVthreads, javaArgs, cmdLine);
             new TTY();
         } catch(Exception e) {
             MessageOutput.printException("Internal exception:", e);
