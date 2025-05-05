@@ -810,8 +810,12 @@ public class TTY implements EventNotifier {
             String lastCommandName = null;
             LineReader lineReader = LineReaderBuilder.builder().build();
             while (true) {
-                String ln = lineReader.readLine(linePrefix);
+                String ln = null;
+                try {
+                 ln = lineReader.readLine(linePrefix);
+                } catch(UserInterruptException ex) {
 
+                }
                 if (ln == null) {
                     /*
                      *  Jdb is being shutdown because debuggee exited, ignore any 'null'

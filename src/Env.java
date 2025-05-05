@@ -40,7 +40,8 @@ import com.sun.jdi.request.MethodEntryRequest;
 import com.sun.jdi.request.MethodExitRequest;
 import java.util.*;
 import java.io.*;
-
+import java.nio.file.Paths;
+import java.nio.file.Path;
 
 class Env {
 
@@ -61,6 +62,20 @@ class Env {
     static void init(String connectSpec, boolean openNow, int flags, boolean trackVthreads, String extraOptions, String mainClass) {
         connection = new VMConnection(connectSpec, flags, trackVthreads, extraOptions);
         Env.mainClass = mainClass;
+        if (mainClass.endsWith(".java")) {
+          Path path = Paths.get(mainClass);
+          File fileLocation = path.toFile();
+          if (fileLocation.exists()) {
+            System.out.println("Setting sourcepath as: " + fileLocation.getParent());
+            setSourcePath(fileLocation.getParent().toString());
+          } else if (fileLocation.isDirectory()) {
+            System.err.println("Main file is a directory: " + path);
+            System.exit(1);
+          } else {
+            System.err.println("Could not find file in path " + path);
+            System.exit(1);
+          }
+        }
         if (!connection.isLaunch() || openNow) {
             connection.open();
         }
