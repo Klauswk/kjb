@@ -1,3 +1,5 @@
+package example.packag.simple;
+
 public class SimpleClass {
     
   public static void main(String[] args) {
@@ -7,3 +9,4 @@ public class SimpleClass {
   }
 
 }
+

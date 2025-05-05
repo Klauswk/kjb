@@ -9,6 +9,10 @@ import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.io.*;
 
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
+import java.util.stream.*;
+
 import org.jline.reader.*;
 
 public class TTY implements EventNotifier {
@@ -1123,6 +1127,36 @@ public class TTY implements EventNotifier {
 
         cmdLine = cmdLine.trim();
         javaArgs = javaArgs.trim();
+
+        if (cmdLine.endsWith(".jar")) {
+          javaArgs = addArgument(javaArgs, "-cp");
+          javaArgs = addArgument(javaArgs, cmdLine);
+          System.out.println("javaArgs: " + javaArgs);
+          try { 
+            JarFile jarFile = new JarFile(cmdLine);
+            for (Iterator<JarEntry> it = jarFile.entries().asIterator(); it.hasNext(); ) {
+              JarEntry entry = it.next();
+              String realName = entry.getRealName();
+              String manifestFile = "MANIFEST.MF";
+              if (realName.endsWith(manifestFile)) {
+                try (InputStream s = jarFile.getInputStream(entry)) {
+                  BufferedReader br = new BufferedReader(new InputStreamReader(s));
+                  String line = null;
+                  while((line = br.readLine()) != null) {
+                     if (line.startsWith("Main-Class: ")) {
+                        System.out.println("MainClass: " + line.substring(line.indexOf(":") + 2));
+                        cmdLine = line.substring(line.indexOf(":") + 2);
+                     }
+                  }
+                } catch (IOException e) {
+                  e.printStackTrace();
+                }
+              }
+            }
+          } catch (IOException e) {
+            System.err.println(e.getMessage());
+          }
+        }
 
         if (cmdLine.length() > 0) {
             if (!connectSpec.startsWith("com.sun.jdi.CommandLineLaunch:")) {

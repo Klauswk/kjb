@@ -1,3 +1,3 @@
 javac -d "test/target/" test/*.java  
-jar -cvf Test.jar -C "test/target/" example
+jar -cvfe Test.jar example.packag.simple.SimpleClass -C "test/target/" example 
 
