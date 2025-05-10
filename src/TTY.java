@@ -16,6 +16,7 @@ import java.util.stream.*;
 import org.jline.reader.*;
 
 public class TTY implements EventNotifier {
+
     /**
      * Commands that are repeatable on empty input.
      */
@@ -42,7 +43,7 @@ public class TTY implements EventNotifier {
     /**
      * The name of this tool.
      */
-    private static final String progname = "jdb";
+    private static final String progname = "kjb";
     private static boolean trackVthreads;
 
     private volatile boolean shuttingDown;
@@ -296,6 +297,8 @@ public class TTY implements EventNotifier {
         {"!!",           "n",         "y"},
         {"?",            "y",         "y"},
         {"bytecodes",    "n",         "y"},
+        {"b",            "y",         "y"},
+        {"break",        "y",         "y"},
         {"catch",        "y",         "n"},
         {"class",        "n",         "y"},
         {"classes",      "n",         "y"},
@@ -326,6 +329,7 @@ public class TTY implements EventNotifier {
         {"memory",       "n",         "y"},
         {"methods",      "n",         "y"},
         {"monitor",      "n",         "n"},
+        {"n",            "n",         "n"},
         {"next",         "n",         "n"},
         {"pop",          "n",         "n"},
         {"print",        "n",         "y"},
@@ -514,7 +518,7 @@ public class TTY implements EventNotifier {
                         } else if (cmd.equals("stepi")) {
                             showPrompt = false;
                             evaluator.commandStepi();
-                        } else if (cmd.equals("next")) {
+                        } else if (cmd.equals("next") || cmd.equals("n")) {
                             showPrompt = false;
                             evaluator.commandNext();
                         } else if (cmd.equals("kill")) {
@@ -553,6 +557,9 @@ public class TTY implements EventNotifier {
                             evaluator.commandGC();
                         } else if (cmd.equals("stop")) {
                             evaluator.commandStop(t);
+                        } else if (cmd.equals("b") || cmd.equals("break")) {
+                            String breakCommand = "in " + t.nextToken();
+                            evaluator.commandStop(new StringTokenizer(breakCommand));
                         } else if (cmd.equals("clear")) {
                             evaluator.commandClear(t);
                         } else if (cmd.equals("watch")) {
@@ -812,13 +819,14 @@ public class TTY implements EventNotifier {
             }
             String lastLine = null;
             String lastCommandName = null;
+
             LineReader lineReader = LineReaderBuilder.builder().build();
             while (true) {
                 String ln = null;
                 try {
                  ln = lineReader.readLine(linePrefix);
                 } catch(UserInterruptException ex) {
-
+                } catch(EndOfFileException ex) {
                 }
                 if (ln == null) {
                     /*
