@@ -48,7 +48,7 @@ class SourceMapper {
 
     private final String[] dirs;
 
-    private final List<File> files;
+    private final List<String> sourceFiles;
 
     SourceMapper(List<String> sourcepath) {
           /*
@@ -56,7 +56,7 @@ class SourceMapper {
          * (via PathSearchingVirtualMachine.classPath())
          */
         List<String> dirList = new ArrayList<String>();
-        files = new ArrayList<>(); 
+        sourceFiles = new ArrayList<>(); 
         for (String element : sourcepath) {
             //XXX remove .jar and .zip files; we want only directories on
             //the source path. (Bug ID 4186582)
@@ -72,7 +72,7 @@ class SourceMapper {
           File realFile = path.toFile();
           if (realFile.exists()) {
             try{
-              PrintFiles visitor = new PrintFiles(path);
+              PrintFiles visitor = new PrintFiles(path, sourceFiles);
               Files.walkFileTree(path, visitor);
             } catch (Exception e) {
               e.printStackTrace();
@@ -93,7 +93,7 @@ class SourceMapper {
         StringTokenizer st = new StringTokenizer(sourcepath,
                                                  File.pathSeparator);
         List<String> dirList = new ArrayList<String>();
-        files = new ArrayList<>(); 
+        sourceFiles = new ArrayList<>(); 
         while (st.hasMoreTokens()) {
             String s = st.nextToken();
             //XXX remove .jar and .zip files; we want only directories on
@@ -109,7 +109,7 @@ class SourceMapper {
           File realFile = path.toFile();
           if (realFile.exists()) {
             try{
-              PrintFiles visitor = new PrintFiles(path);
+              PrintFiles visitor = new PrintFiles(path, sourceFiles);
               Files.walkFileTree(path, visitor);
             } catch (Exception e) {
               e.printStackTrace();
@@ -134,6 +134,10 @@ class SourceMapper {
             sp.append(dirs[i]);
         }
         return sp.toString();
+    }
+
+    List<String> getSourceFiles() {
+      return this.sourceFiles;
     }
 
     /**
@@ -181,17 +185,29 @@ class SourceMapper {
             extends SimpleFileVisitor<Path> {
 
         private final Path rootPath;
+        private final List<String> sourceFiles;
 
-        public PrintFiles(Path rootPath) {
+        public PrintFiles(Path rootPath, List<String> sourceFiles) {
             this.rootPath = rootPath;
+            this.sourceFiles = sourceFiles;
         }
 
         @Override
         public FileVisitResult visitFile(Path file,
                                          BasicFileAttributes attr) {
-            if (attr.isRegularFile()) {
+            if (attr.isRegularFile() && file.toString().endsWith("java")) {
                 Path newPath = rootPath.relativize(file);
-                System.out.println(file.toString());
+
+                //For classes without a root, the compiler doesn't really handle well
+                if (!newPath.toString().contains("/")) {
+                  System.out.println("The class " + newPath.toString() + " doesn't have a package, ignoring the source file");
+                  return CONTINUE;
+                }
+
+                sourceFiles.add(newPath.toString()
+                    .replaceAll(".java", "")
+                    .replaceAll("/", "."));
+
             }
             return CONTINUE;
         }

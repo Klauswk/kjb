@@ -419,6 +419,8 @@ public class TTY implements EventNotifier {
     };
 
 
+    boolean showPrompt = true;
+
     /**
      * @return the name (first token) of the command processed
      */
@@ -426,7 +428,6 @@ public class TTY implements EventNotifier {
         String cmd = t.nextToken().toLowerCase();
 
         // Normally, prompt for the next command after this one is done
-        boolean showPrompt = true;
 
         /*
          * Anything starting with # is discarded as a no-op or 'comment'.
@@ -845,15 +846,15 @@ public class TTY implements EventNotifier {
             };
 
             Supplier<Collection<String>> autoCompleteClasses = () -> {
-              
-              Env.getSourcePath();
-
-              return Env.vm().allClasses().stream()
+              List<String> sourceFiles = Env.getSourceFiles();
+              List<String> loadedClasses = Env.vm().allClasses().stream()
               .map(spec -> spec.name())
               .collect(Collectors.toList());
+
+              return Stream.concat(sourceFiles.stream(), loadedClasses.stream())
+              .collect(Collectors.toSet());
             };
             
-
             Supplier<Collection<String>> autoCompleteMethods= () -> {
               if (currentClassName == null) { 
                 return Collections.emptyList();
@@ -896,7 +897,7 @@ public class TTY implements EventNotifier {
                     classCompleter.complete(reader, line, candidates);
                   } else if (buffer.startsWith("break")) {
                     classCompleter.complete(reader, line, candidates);
-                  } else if (buffer.startsWith("sourcepath")) {
+                  } else if (buffer.startsWith("sourcepath") || buffer.startsWith("run")) {
                     fileCompleter.complete(reader, line, candidates);
                   } else {
                     baseCommandsCompleter.complete(reader, line, candidates);
@@ -910,7 +911,11 @@ public class TTY implements EventNotifier {
             while (true) {
                 String ln = null;
                 try {
-                 ln = lineReader.readLine(linePrefix).trim();
+                  if (showPrompt) {
+                    ln = lineReader.readLine(linePrefix).trim();
+                  } else {
+                    ln = lineReader.readLine("").trim();
+                  }
                 } catch(UserInterruptException ex) {
                   ex.printStackTrace();
                 } catch(EndOfFileException ex) {
