@@ -1,5 +1,8 @@
 package com.github.klauswk.tty;
 
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.body.MethodDeclaration;
 import com.sun.jdi.*;
 import com.sun.jdi.event.*;
 import com.sun.jdi.request.*;
@@ -13,6 +16,9 @@ import java.io.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.*;
+
+import java.nio.file.Paths;
+import java.nio.file.Path;
 
 import org.jline.reader.*;
 import org.jline.reader.impl.completer.*;
@@ -859,7 +865,8 @@ public class TTY implements EventNotifier {
               if (currentClassName == null) { 
                 return Collections.emptyList();
               }
-
+              
+              
               ReferenceType cls = Env.getReferenceTypeFromToken(currentClassName);
 
               if (cls != null) {
@@ -869,7 +876,28 @@ public class TTY implements EventNotifier {
 
                 return methods;
               }
+              
+              List<Path> sourceFiles = Env.getSourcePathFiles();
+              
+              Optional<Path> source = sourceFiles.stream().filter(sf -> sf.toString().replaceAll("/", ".").contains(currentClassName)).findFirst();
+              
+              
+              if (source.isPresent()) {
+                try {
+                  CompilationUnit cunit = StaticJavaParser.parse(source.get());
+                  List<String> methods = cunit.findAll(MethodDeclaration.class)
+                    .stream()
+                    .map(MethodDeclaration::getName)
+                    .map(name -> name.toString())
+                    .map(name -> currentClassName + "." + name)
+                    .collect(Collectors.toList());
 
+                    return methods;
+                } catch (IOException e) {
+                  e.printStackTrace();
+                }
+              }
+              
               return Collections.emptyList(); 
 
             };
@@ -1228,6 +1256,7 @@ public class TTY implements EventNotifier {
 
         cmdLine = cmdLine.trim();
         javaArgs = javaArgs.trim();
+        Path sourcePath = Path.of("").toAbsolutePath();
 
         if (cmdLine.endsWith(".jar")) {
           javaArgs = addArgument(javaArgs, "-cp");
@@ -1235,6 +1264,7 @@ public class TTY implements EventNotifier {
           System.out.println("javaArgs: " + javaArgs);
           try { 
             JarFile jarFile = new JarFile(cmdLine);
+            sourcePath = Path.of(cmdLine).toAbsolutePath().getParent();
             for (Iterator<JarEntry> it = jarFile.entries().asIterator(); it.hasNext(); ) {
               JarEntry entry = it.next();
               String realName = entry.getRealName();
@@ -1280,7 +1310,7 @@ public class TTY implements EventNotifier {
         }
 
         try {
-            Env.init(connectSpec, launchImmediately, traceFlags, trackVthreads, javaArgs, cmdLine);
+            Env.init(connectSpec, launchImmediately, traceFlags, trackVthreads, javaArgs, cmdLine, sourcePath);
             new TTY();
         } catch(Exception e) {
             MessageOutput.printException("Internal exception:", e);

@@ -60,10 +60,9 @@ class Env {
     private static Method atExitMethod;
     private static String mainClass;
 
-    static void init(String connectSpec, boolean openNow, int flags, boolean trackVthreads, String extraOptions, String mainClass) {
+    static void init(String connectSpec, boolean openNow, int flags, boolean trackVthreads, String extraOptions, String mainClass, Path path) {
         connection = new VMConnection(connectSpec, flags, trackVthreads, extraOptions);
         Env.mainClass = mainClass;
-        Path path = Path.of("").toAbsolutePath();
         File fileLocation = path.toFile();
 
         if (fileLocation.exists()) {
@@ -133,6 +132,10 @@ class Env {
 
     static List<String> getSourceFiles() {
       return sourceMapper.getSourceFiles();
+    }
+    
+    static List<Path> getSourcePathFiles() {
+    	return sourceMapper.getSourceFilesPath();
     }
 
     private static List<String> excludes() {

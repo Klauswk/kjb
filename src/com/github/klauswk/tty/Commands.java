@@ -37,8 +37,6 @@ package com.github.klauswk.tty;
 import com.sun.jdi.*;
 import com.sun.jdi.connect.Connector;
 import com.sun.jdi.request.*;
-import com.sun.tools.example.debug.expr.ExpressionParser;
-import com.sun.tools.example.debug.expr.ParseException;
 
 import java.text.*;
 import java.util.*;

@@ -50,6 +50,8 @@ class SourceMapper {
 
     private final List<String> sourceFiles;
 
+    private final List<Path> sourceFilesPath;
+
     SourceMapper(List<String> sourcepath) {
           /*
            * sourcepath can arrive from the debuggee as a List.
@@ -57,6 +59,8 @@ class SourceMapper {
          */
         List<String> dirList = new ArrayList<String>();
         sourceFiles = new ArrayList<>(); 
+        sourceFilesPath = new ArrayList<>();
+        
         for (String element : sourcepath) {
             //XXX remove .jar and .zip files; we want only directories on
             //the source path. (Bug ID 4186582)
@@ -72,7 +76,7 @@ class SourceMapper {
           File realFile = path.toFile();
           if (realFile.exists()) {
             try{
-              PrintFiles visitor = new PrintFiles(path, sourceFiles);
+              PrintFiles visitor = new PrintFiles(path, sourceFiles, sourceFilesPath);
               Files.walkFileTree(path, visitor);
             } catch (Exception e) {
               e.printStackTrace();
@@ -94,6 +98,7 @@ class SourceMapper {
                                                  File.pathSeparator);
         List<String> dirList = new ArrayList<String>();
         sourceFiles = new ArrayList<>(); 
+        sourceFilesPath = new ArrayList<>();
         while (st.hasMoreTokens()) {
             String s = st.nextToken();
             //XXX remove .jar and .zip files; we want only directories on
@@ -109,7 +114,7 @@ class SourceMapper {
           File realFile = path.toFile();
           if (realFile.exists()) {
             try{
-              PrintFiles visitor = new PrintFiles(path, sourceFiles);
+              PrintFiles visitor = new PrintFiles(path, sourceFiles, sourceFilesPath);
               Files.walkFileTree(path, visitor);
             } catch (Exception e) {
               e.printStackTrace();
@@ -138,6 +143,10 @@ class SourceMapper {
 
     List<String> getSourceFiles() {
       return this.sourceFiles;
+    }
+
+    List<Path> getSourceFilesPath() {
+      return this.sourceFilesPath;
     }
 
     /**
@@ -186,10 +195,12 @@ class SourceMapper {
 
         private final Path rootPath;
         private final List<String> sourceFiles;
+        private final List<Path> sourceFilesPath;
 
-        public PrintFiles(Path rootPath, List<String> sourceFiles) {
+        public PrintFiles(Path rootPath, List<String> sourceFiles, List<Path> sourceFilesPath) {
             this.rootPath = rootPath;
             this.sourceFiles = sourceFiles;
+            this.sourceFilesPath = sourceFilesPath;
         }
 
         @Override
@@ -204,7 +215,13 @@ class SourceMapper {
                   return CONTINUE;
                 }
 
+                System.out.println("Adding file: " + file.toString());
+                
+                sourceFilesPath.add(file);
+                
                 sourceFiles.add(newPath.toString()
+                    .replaceAll("src/", "")
+                    .replaceAll("test/", "")
                     .replaceAll(".java", "")
                     .replaceAll("/", "."));
 

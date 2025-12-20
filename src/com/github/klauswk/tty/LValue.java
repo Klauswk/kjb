@@ -32,7 +32,7 @@
  */
 
 
-package com.sun.tools.example.debug.expr;
+package com.github.klauswk.tty;
 
 import com.sun.jdi.*;
 import java.util.*;
