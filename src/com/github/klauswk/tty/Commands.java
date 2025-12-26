@@ -684,6 +684,17 @@ public class Commands {
         Env.vm().resume();
     }
 
+    void commandStart() {
+      String mainClass = Env.getMainClass();
+
+      if (Env.getMainClass().endsWith(".java")) {
+        mainClass = mainClass.substring(mainClass.lastIndexOf('/') + 1, mainClass.lastIndexOf('.'));
+      }
+
+      String startCommand = "in " + mainClass +  ".main";
+      commandStop(new StringTokenizer(startCommand));
+    }
+
     void commandNext() {
         ThreadInfo threadInfo = ThreadInfo.getCurrentThreadInfo();
         if (threadInfo == null) {

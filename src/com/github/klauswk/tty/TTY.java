@@ -123,6 +123,7 @@ public class TTY implements EventNotifier {
             case EventRequest.SUSPEND_EVENT_THREAD:
             case EventRequest.SUSPEND_NONE:
                 printBreakpointLocation(be);
+                MessageOutput.printPrompt();
                 break;
         }
     }
@@ -239,6 +240,7 @@ public class TTY implements EventNotifier {
             t.nextToken();  // get rid of monitor number
             executeCommand(t);
         }
+        MessageOutput.printPrompt();
     }
 
     @Override
@@ -432,7 +434,8 @@ public class TTY implements EventNotifier {
      */
     String executeCommand(StringTokenizer t) {
         String cmd = t.nextToken().toLowerCase();
-
+        
+        showPrompt = true;
         // Normally, prompt for the next command after this one is done
 
         /*
@@ -487,15 +490,7 @@ public class TTY implements EventNotifier {
                         } else if (cmd.equals("locals")) {
                             evaluator.commandLocals();
                         } else if (cmd.equals("start")) {
-                            String mainClass = Env.getMainClass();
-
-                            if (Env.getMainClass().endsWith(".java")) {
-                               mainClass = mainClass.substring(mainClass.lastIndexOf('/') + 1, mainClass.lastIndexOf('.'));
-                            }
-
-                            String startCommand = "in " + mainClass +  ".main";
-                            evaluator.commandStop(new StringTokenizer(startCommand));
-                            evaluator.commandNext();
+                            evaluator.commandStart();
                         } else if (cmd.equals("classes")) {
                             evaluator.commandClasses();
                         } else if (cmd.equals("class")) {
