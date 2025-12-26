@@ -331,17 +331,14 @@ public class TTY implements EventNotifier {
         {"exit",         "y",         "y"},
         {"extension",    "n",         "y"},
         {"fields",       "n",         "y"},
-        {"gc",           "n",         "n"},
         {"help",         "y",         "y"},
         {"ignore",       "y",         "n"},
         {"interrupt",    "n",         "n"},
         {"kill",         "n",         "n"},
         {"lines",        "n",         "y"},
         {"list",         "n",         "y"},
-        {"load",         "n",         "y"},
         {"locals",       "n",         "y"},
         {"lock",         "n",         "n"},
-        {"memory",       "n",         "y"},
         {"methods",      "n",         "y"},
         {"monitor",      "n",         "n"},
         {"n",            "n",         "n"},
@@ -546,8 +543,6 @@ public class TTY implements EventNotifier {
                             evaluator.commandUp(t);
                         } else if (cmd.equals("down")) {
                             evaluator.commandDown(t);
-                        } else if (cmd.equals("load")) {
-                            evaluator.commandLoad(t);
                         } else if (cmd.equals("run")) {
                             evaluator.commandRun(t);
                             /*
@@ -559,10 +554,6 @@ public class TTY implements EventNotifier {
                             if ((handler == null) && Env.connection().isOpen()) {
                                 handler = new EventHandler(this, false, trackVthreads);
                             }
-                        } else if (cmd.equals("memory")) {
-                            evaluator.commandMemory();
-                        } else if (cmd.equals("gc")) {
-                            evaluator.commandGC();
                         } else if (cmd.equals("stop")) {
                             evaluator.commandStop(t);
                         } else if (cmd.equals("b") || cmd.equals("break")) {

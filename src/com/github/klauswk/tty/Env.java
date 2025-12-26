@@ -64,7 +64,6 @@ class Env {
         connection = new VMConnection(connectSpec, flags, trackVthreads, extraOptions);
         Env.mainClass = mainClass;
         File fileLocation = path.toFile();
-
         if (fileLocation.exists()) {
           List<String> sourcePaths = new ArrayList();
           sourcePaths.add(fileLocation.toString());

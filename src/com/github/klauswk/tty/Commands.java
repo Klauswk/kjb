@@ -565,10 +565,6 @@ public class Commands {
 
     }
 
-    void commandLoad(StringTokenizer t) {
-        MessageOutput.println("The load command is no longer supported.");
-    }
-
     /* Note: no longer used, but kept around as sample code. */
     private List<ThreadReference> allThreads(ThreadGroupReference group) {
         List<ThreadReference> list = new ArrayList<ThreadReference>();
@@ -1021,14 +1017,6 @@ public class Commands {
                 threadInfo.getThread().interrupt();
             }
         }
-    }
-
-    void commandMemory() {
-        MessageOutput.println("The memory command is no longer supported.");
-    }
-
-    void commandGC() {
-        MessageOutput.println("The gc command is no longer necessary.");
     }
 
     /*
