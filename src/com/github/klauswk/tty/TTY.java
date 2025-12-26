@@ -1284,6 +1284,8 @@ public class TTY implements EventNotifier {
           } catch (IOException e) {
             System.err.println(e.getMessage());
           }
+        } else if (cmdLine.endsWith(".java")) {
+            sourcePath = Path.of(cmdLine).toAbsolutePath().getParent();
         }
 
         if (cmdLine.length() > 0) {
