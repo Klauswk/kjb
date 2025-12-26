@@ -931,6 +931,8 @@ public class TTY implements EventNotifier {
             LineReader lineReader = LineReaderBuilder.builder()
               .completer(completer).build();
 
+            lineReader.setVariable(LineReader.HISTORY_FILE, Paths.get("./.kjb_history"));
+
             while (true) {
                 String ln = null;
                 try {
