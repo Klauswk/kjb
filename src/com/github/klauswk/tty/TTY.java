@@ -911,7 +911,7 @@ public class TTY implements EventNotifier {
                     classCompleter.complete(reader, line, candidates);
                   } else if (buffer.startsWith("break")) {
                     classCompleter.complete(reader, line, candidates);
-                  } else if (buffer.startsWith("sourcepath") || buffer.startsWith("run")) {
+                  } else if (buffer.startsWith("sourcepath") || buffer.startsWith("run") || buffer.startsWith("read")) {
                     fileCompleter.complete(reader, line, candidates);
                   } else {
                     baseCommandsCompleter.complete(reader, line, candidates);
