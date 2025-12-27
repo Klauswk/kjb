@@ -65,7 +65,7 @@ class Env {
         Env.mainClass = mainClass;
         File fileLocation = path.toFile();
         if (fileLocation.exists()) {
-          List<String> sourcePaths = new ArrayList();
+          var sourcePaths = new ArrayList<String>();
           sourcePaths.add(fileLocation.toString());
           sourcePaths.add(fileLocation.toString() + "/src/");
           sourcePaths.add(fileLocation.toString() + "/src/main/java/");

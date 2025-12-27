@@ -53,11 +53,14 @@ public class TTY implements EventNotifier {
     private List<String> monitorCommands = new CopyOnWriteArrayList<>();
     private int monitorCount = 0;
 
+    private String lastLine = null;
+    private String lastCommandName = null;
+    private final LineReader lineReader; 
     /**
      * The name of this tool.
      */
-    private static final String progname = "kjb";
-    private static boolean trackVthreads;
+    private final String progname;
+    private final boolean trackVthreads;
 
     private volatile boolean shuttingDown;
 
@@ -245,6 +248,154 @@ public class TTY implements EventNotifier {
 
     @Override
     public void receivedEvent(Event event) {
+    }
+
+    @SuppressWarnings("deprecation") 
+    public TTY(String progname, boolean trackVthreads) throws Exception {
+      this.progname = progname;
+      this.trackVthreads = trackVthreads;
+      if (Env.connection().isOpen() && Env.vm().canBeModified()) {
+        /*
+         * Connection opened on startup. Start event handler
+         * immediately, telling it (through arg 2) to stop on the
+         * VM start event.
+         */
+        this.handler = new EventHandler(this, true, trackVthreads);
+      }
+      /*
+       * Read start up files.  This mimics the behavior
+       * of gdb which will read both ~/.gdbinit and then
+       * ./.gdbinit if they exist.  We have the twist that
+       * we allow two different names, so we do this:
+       *  if ~/jdb.ini exists,
+       *      read it
+       *  else if ~/.jdbrc exists,
+       *      read it
+       *
+       *  if ./jdb.ini exists,
+       *      if it hasn't been read, read it
+       *      It could have been read above because ~ == .
+       *      or because of symlinks, ...
+       *  else if ./jdbrx exists
+       *      if it hasn't been read, read it
+       */
+      {
+        String userHome = System.getProperty("user.home");
+        String canonPath;
+
+        if ((canonPath = readStartupCommandFile(userHome, "jdb.ini", null)) == null) {
+          // Doesn't exist, try alternate spelling
+          canonPath = readStartupCommandFile(userHome, ".jdbrc", null);
+        }
+
+        String userDir = System.getProperty("user.dir");
+        if (readStartupCommandFile(userDir, "jdb.ini", canonPath) == null) {
+          // Doesn't exist, try alternate spelling
+          readStartupCommandFile(userDir, ".jdbrc", canonPath);
+        }
+      }
+
+      String[] simplifiedCommands = Stream.of(commandList).map(arg -> arg[0])
+        .filter(arg -> arg.length() > 2)
+        .toArray(String[]::new);
+
+      StringsCompleter baseCommandsCompleter = new StringsCompleter(simplifiedCommands);
+
+      Supplier<Collection<String>> autoCompleteOptions = () -> {
+        return Env.specList.eventRequestSpecs().stream()
+          .filter(spec -> spec instanceof BreakpointSpec)
+          .map(spec -> spec.toString())
+          .map(spec -> spec.replace("breakpoint ", ""))
+          .collect(Collectors.toList());
+      };
+
+      Supplier<Collection<String>> autoCompleteClasses = () -> {
+        List<String> sourceFiles = Env.getSourceFiles();
+        List<String> loadedClasses = Env.vm().allClasses().stream()
+          .map(spec -> spec.name())
+          .collect(Collectors.toList());
+
+        return Stream.concat(sourceFiles.stream(), loadedClasses.stream())
+          .collect(Collectors.toSet());
+      };
+
+      Supplier<Collection<String>> autoCompleteMethods= () -> {
+        if (currentClassName == null) { 
+          return Collections.emptyList();
+        }
+
+
+        ReferenceType cls = Env.getReferenceTypeFromToken(currentClassName);
+
+        if (cls != null) {
+          List<String> methods = cls.allMethods().stream()
+            .map(spec -> cls.name() + "." + spec.name())
+            .collect(Collectors.toList());
+
+          return methods;
+        }
+
+        List<Path> sourceFiles = Env.getSourcePathFiles();
+
+        Optional<Path> source = sourceFiles.stream().filter(sf -> sf.toString().replaceAll("/", ".").contains(currentClassName)).findFirst();
+
+
+        if (source.isPresent()) {
+          try {
+            CompilationUnit cunit = StaticJavaParser.parse(source.get());
+            List<String> methods = cunit.findAll(MethodDeclaration.class)
+              .stream()
+              .map(MethodDeclaration::getName)
+              .map(name -> name.toString())
+              .map(name -> currentClassName + "." + name)
+              .collect(Collectors.toList());
+
+            return methods;
+          } catch (IOException e) {
+            e.printStackTrace();
+          }
+        }
+
+        return Collections.emptyList(); 
+
+      };
+
+      StringsCompleter breakPointCompleter = new StringsCompleter(autoCompleteOptions);
+
+      StringsCompleter classCompleter = new StringsCompleter(autoCompleteClasses);
+
+      StringsCompleter methodCompleter = new StringsCompleter(autoCompleteMethods);
+
+      Completer fileCompleter = new FileNameCompleter();
+
+      Completer completer = new Completer() {
+        @Override
+          public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
+            String buffer = line.line();                  
+
+            if (buffer.contains("#")) {
+              currentClassName = buffer.substring(buffer.indexOf(" ") + 1, buffer.lastIndexOf("#"));
+              methodCompleter.complete(reader,line, candidates);
+            }
+            else if (buffer.startsWith("clear")) {
+              breakPointCompleter.complete(reader, line, candidates);
+            } else if (buffer.startsWith("class") || buffer.startsWith("methods") || buffer.startsWith("fields")) {
+              classCompleter.complete(reader, line, candidates);
+            } else if (buffer.startsWith("break")) {
+              classCompleter.complete(reader, line, candidates);
+            } else if (buffer.startsWith("sourcepath") || buffer.startsWith("run") || buffer.startsWith("read")) {
+              fileCompleter.complete(reader, line, candidates);
+            } else {
+              baseCommandsCompleter.complete(reader, line, candidates);
+            }
+          }
+      };
+
+      LineReader lineReader = LineReaderBuilder.builder()
+        .completer(completer).build();
+
+      lineReader.setVariable(LineReader.HISTORY_FILE, Paths.get("./.kjb_history"));
+      this.lineReader = lineReader; 
     }
 
     private void printBaseLocation(String threadName, Location loc) {
@@ -770,159 +921,10 @@ public class TTY implements EventNotifier {
     }
 
 
-    public TTY() throws Exception {
 
-        MessageOutput.println("Initializing progname", progname);
-
-        if (Env.connection().isOpen() && Env.vm().canBeModified()) {
-            /*
-             * Connection opened on startup. Start event handler
-             * immediately, telling it (through arg 2) to stop on the
-             * VM start event.
-             */
-            this.handler = new EventHandler(this, true, trackVthreads);
-        }
+    public void run() {
         try {
-            BufferedReader in =
-                    new BufferedReader(new InputStreamReader(System.in));
-
             Thread.currentThread().setPriority(Thread.NORM_PRIORITY);
-
-            /*
-             * Read start up files.  This mimics the behavior
-             * of gdb which will read both ~/.gdbinit and then
-             * ./.gdbinit if they exist.  We have the twist that
-             * we allow two different names, so we do this:
-             *  if ~/jdb.ini exists,
-             *      read it
-             *  else if ~/.jdbrc exists,
-             *      read it
-             *
-             *  if ./jdb.ini exists,
-             *      if it hasn't been read, read it
-             *      It could have been read above because ~ == .
-             *      or because of symlinks, ...
-             *  else if ./jdbrx exists
-             *      if it hasn't been read, read it
-             */
-            {
-                String userHome = System.getProperty("user.home");
-                String canonPath;
-
-                if ((canonPath = readStartupCommandFile(userHome, "jdb.ini", null)) == null) {
-                    // Doesn't exist, try alternate spelling
-                    canonPath = readStartupCommandFile(userHome, ".jdbrc", null);
-                }
-
-                String userDir = System.getProperty("user.dir");
-                if (readStartupCommandFile(userDir, "jdb.ini", canonPath) == null) {
-                    // Doesn't exist, try alternate spelling
-                    readStartupCommandFile(userDir, ".jdbrc", canonPath);
-                }
-            }
-            String lastLine = null;
-            String lastCommandName = null;
-
-            String[] simplifiedCommands = Stream.of(commandList).map(arg -> arg[0])
-              .filter(arg -> arg.length() > 2)
-              .toArray(String[]::new);
-
-            StringsCompleter baseCommandsCompleter = new StringsCompleter(simplifiedCommands);
-
-            Supplier<Collection<String>> autoCompleteOptions = () -> {
-              return Env.specList.eventRequestSpecs().stream()
-              .filter(spec -> spec instanceof BreakpointSpec)
-              .map(spec -> spec.toString())
-              .map(spec -> spec.replace("breakpoint ", ""))
-              .collect(Collectors.toList());
-            };
-
-            Supplier<Collection<String>> autoCompleteClasses = () -> {
-              List<String> sourceFiles = Env.getSourceFiles();
-              List<String> loadedClasses = Env.vm().allClasses().stream()
-              .map(spec -> spec.name())
-              .collect(Collectors.toList());
-
-              return Stream.concat(sourceFiles.stream(), loadedClasses.stream())
-              .collect(Collectors.toSet());
-            };
-            
-            Supplier<Collection<String>> autoCompleteMethods= () -> {
-              if (currentClassName == null) { 
-                return Collections.emptyList();
-              }
-              
-              
-              ReferenceType cls = Env.getReferenceTypeFromToken(currentClassName);
-
-              if (cls != null) {
-                List<String> methods = cls.allMethods().stream()
-                  .map(spec -> cls.name() + "." + spec.name())
-                  .collect(Collectors.toList());
-
-                return methods;
-              }
-              
-              List<Path> sourceFiles = Env.getSourcePathFiles();
-              
-              Optional<Path> source = sourceFiles.stream().filter(sf -> sf.toString().replaceAll("/", ".").contains(currentClassName)).findFirst();
-              
-              
-              if (source.isPresent()) {
-                try {
-                  CompilationUnit cunit = StaticJavaParser.parse(source.get());
-                  List<String> methods = cunit.findAll(MethodDeclaration.class)
-                    .stream()
-                    .map(MethodDeclaration::getName)
-                    .map(name -> name.toString())
-                    .map(name -> currentClassName + "." + name)
-                    .collect(Collectors.toList());
-
-                    return methods;
-                } catch (IOException e) {
-                  e.printStackTrace();
-                }
-              }
-              
-              return Collections.emptyList(); 
-
-            };
-
-            StringsCompleter breakPointCompleter = new StringsCompleter(autoCompleteOptions);
-            
-            StringsCompleter classCompleter = new StringsCompleter(autoCompleteClasses);
-
-            StringsCompleter methodCompleter = new StringsCompleter(autoCompleteMethods);
-
-            Completer fileCompleter = new FileNameCompleter();
-
-            Completer completer = new Completer() {
-                @Override
-                public void complete(LineReader reader, ParsedLine line, List<Candidate> candidates) {
-                  String buffer = line.line();                  
-                  
-                  if (buffer.contains("#")) {
-                      currentClassName = buffer.substring(buffer.indexOf(" ") + 1, buffer.lastIndexOf("#"));
-                      methodCompleter.complete(reader,line, candidates);
-                  }
-                  else if (buffer.startsWith("clear")) {
-                    breakPointCompleter.complete(reader, line, candidates);
-                  } else if (buffer.startsWith("class") || buffer.startsWith("methods") || buffer.startsWith("fields")) {
-                    classCompleter.complete(reader, line, candidates);
-                  } else if (buffer.startsWith("break")) {
-                    classCompleter.complete(reader, line, candidates);
-                  } else if (buffer.startsWith("sourcepath") || buffer.startsWith("run") || buffer.startsWith("read")) {
-                    fileCompleter.complete(reader, line, candidates);
-                  } else {
-                    baseCommandsCompleter.complete(reader, line, candidates);
-                  }
-                }
-            };
-
-            LineReader lineReader = LineReaderBuilder.builder()
-              .completer(completer).build();
-
-            lineReader.setVariable(LineReader.HISTORY_FILE, Paths.get("./.kjb_history"));
 
             while (true) {
                 String ln = null;
@@ -971,6 +973,4 @@ public class TTY implements EventNotifier {
             handler.handleDisconnectedException();
         }
     }
-
-    
 }

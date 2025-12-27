@@ -289,7 +289,7 @@ public class Jdb {
 
     try {
       Env.init(connectSpec, launchImmediately, traceFlags, trackVthreads, javaArgs, cmdLine, sourcePath);
-      var ttyScreen = new TTY();
+      var ttyScreen = new TTY(progname, trackVthreads);
       ttyScreen.run();
     } catch(Exception e) {
       MessageOutput.printException("Internal exception:", e);
